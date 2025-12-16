@@ -1,2 +1,2 @@
 
-from .amazon_service import AmazonClient
+from app.amazon.client import AmazonClient

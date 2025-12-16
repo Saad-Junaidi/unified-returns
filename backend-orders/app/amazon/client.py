@@ -1,11 +1,12 @@
+from datetime import datetime, timezone
 from sp_api.api import Orders
 from sp_api.base import SellingApiException, Marketplaces
 import os
 
+
 class AmazonClient:
     def __init__(self):
-        # Your version of Credentials expects a DICT
-        credentials_dict = {
+        credentials = {
             "refresh_token": os.getenv("SP_API_REFRESH_TOKEN"),
             "lwa_app_id": os.getenv("SP_API_LWA_CLIENT_ID"),
             "lwa_client_secret": os.getenv("SP_API_LWA_CLIENT_SECRET"),
@@ -15,14 +16,26 @@ class AmazonClient:
 
         self.orders_api = Orders(
             marketplace=Marketplaces.US,
-            credentials=credentials_dict
+            credentials=credentials,
         )
 
-    def get_orders(self):
+    def get_orders(self, last_updated_after: datetime):
         try:
-            result = self.orders_api.get_orders(
-                CreatedAfter="2025-12-12T00:00:00Z"
+            # FORCE UTC + AMAZON-APPROVED FORMAT
+            if last_updated_after.tzinfo is None:
+                last_updated_after = last_updated_after.replace(
+                    tzinfo=timezone.utc
+                )
+
+            timestamp = last_updated_after.strftime(
+                "%Y-%m-%dT%H:%M:%SZ"
             )
+
+            result = self.orders_api.get_orders(
+                LastUpdatedAfter=timestamp
+            )
+
             return result.payload
+
         except SellingApiException as e:
-            return {"error": str(e)}
+            raise RuntimeError(str(e))
